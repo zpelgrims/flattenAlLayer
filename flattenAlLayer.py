@@ -24,7 +24,7 @@ cmds.connectAttr('%s.outColor' %newShader ,'%s.surfaceShader' %newShadingGroup)
 # find connections to alLayer
 connectionLayer1 = cmds.listConnections('%s.layer1' %shader[0], d=0)
 connectionLayer2 = cmds.listConnections('%s.layer2' %shader[0], d=0)
-connectionMix = cmds.listConnections('%s.mix' %shader[0], d=0)
+connectionMix = cmds.listConnections('%s.mix' %shader[0], d=0, plugs=True)
 
 
 
@@ -33,7 +33,7 @@ connectionMix = cmds.listConnections('%s.mix' %shader[0], d=0)
 
 
     
-cmds.listAttr("alSurface2")
+cmds.listAttr("alLayerColor_diffuseColor")
 
 
 
@@ -58,6 +58,7 @@ def createLayer(type, attribute):
         layer = cmds.shadingNode("alLayerColor", n="alLayerColor_{0}".format(attribute), asUtility=True)
         
     cmds.setAttr("%s.layer1a" %layer, 1.0)
+    cmds.setAttr("%s.layer2a" %layer, 1.0)
     
     return layer
     
@@ -87,7 +88,7 @@ connectionsList = checkInputs(connectionLayer1, alSurfaceAttributeList)
 
 
 
-def compareValues(node1, node2, alSurfaceAttributeList, connectionsList):
+def compareValues(node1, node2, node3, alSurfaceAttributeList, connectionsList):
     
     for index, val in enumerate(alSurfaceAttributeList):
         
@@ -99,14 +100,29 @@ def compareValues(node1, node2, alSurfaceAttributeList, connectionsList):
             value1 = cmds.getAttr("{0}.{1}".format(node1, alSurfaceAttributeList[index]))
             value2 = cmds.getAttr("{0}.{1}".format(node2, alSurfaceAttributeList[index]))
         
+            
+        if cmds.getAttr("{0}.{1}".format(node1, val), type=1) == "float":
+            attributeType = "float"
+        elif cmds.getAttr("{0}.{1}".format(node1, val), type=1) == "float3":
+            attributeType = "color"
+        
+        
         if value1 == value2:
             print "{0} [SAME]: {1}, {2}".format(val, value1, value2)
         else:
             print "{0} [DIFFERENT]: {1}, {2}".format(val, value1, value2)
             
+            currentLayer = createLayer(attributeType, val)
             
-            createLayer("float", "specColorR")
+            if attributeType == "float":
+                cmds.connectAttr("{0}.{1}".format(node1, val), "{0}.layer1".format(currentLayer))
+                cmds.connectAttr("{0}.{1}".format(node2, val), "{0}.layer2".format(currentLayer))
+                cmds.connectAttr("{0}".format(node3), "{0}.layer2a".format(currentLayer))
+            elif attributeType == "color":
+                cmds.connectAttr("{0}.{1}".format(node1, val), "{0}.layer1".format(currentLayer))
+                cmds.connectAttr("{0}.{1}".format(node2, val), "{0}.layer2".format(currentLayer))
+                cmds.connectAttr("{0}".format(node3), "{0}.layer2a".format(currentLayer))
             
         
     
-compareValues(connectionLayer1[0], connectionLayer2[0], alSurfaceAttributeList, connectionsList)
+compareValues(connectionLayer1[0], connectionLayer2[0], connectionMix[0], alSurfaceAttributeList, connectionsList)
